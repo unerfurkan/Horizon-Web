@@ -33,7 +33,16 @@ export const paymentInfoMap: Record<
     title: "Manual Payment",
     icon: <CreditCard />,
   },
+  pp_iyzico_iyzico: {
+    title: "Credit / debit card (iyzico)",
+    icon: <CreditCard />,
+  },
   // Add more payment providers here
+}
+
+// iyzico hosted checkout form: the customer enters card details on iyzico's own page
+export const isIyzico = (providerId?: string) => {
+  return providerId?.startsWith("pp_iyzico")
 }
 
 // This only checks if it is native stripe or medusa payments for card payments, it ignores the other stripe-based providers

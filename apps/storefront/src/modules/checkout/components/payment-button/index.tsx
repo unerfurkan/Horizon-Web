@@ -1,10 +1,12 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
+import { isIyzico, isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
+import { startIyzicoCheckout } from "@lib/data/payment"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
+import { useParams } from "next/navigation"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
 
@@ -30,6 +32,14 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     case isStripeLike(paymentSession?.provider_id):
       return (
         <StripePaymentButton
+          notReady={notReady}
+          cart={cart}
+          data-testid={dataTestId}
+        />
+      )
+    case isIyzico(paymentSession?.provider_id):
+      return (
+        <IyzicoPaymentButton
           notReady={notReady}
           cart={cart}
           data-testid={dataTestId}
@@ -146,6 +156,54 @@ const StripePaymentButton = ({
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
+      />
+    </>
+  )
+}
+
+const IyzicoPaymentButton = ({
+  cart,
+  notReady,
+  "data-testid": dataTestId,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+  "data-testid"?: string
+}) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { countryCode } = useParams<{ countryCode: string }>()
+
+  const handlePayment = async () => {
+    setSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      // iyzico sends the customer back to the backend, which forwards them to this page.
+      const returnUrl = `${window.location.origin}/${countryCode}/checkout/iyzico-return`
+      const { payment_page_url } = await startIyzicoCheckout(cart.id, returnUrl)
+      // Leave the shop for iyzico's secure payment page. Keep the button busy meanwhile.
+      window.location.assign(payment_page_url)
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : String(err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <Button
+        disabled={notReady}
+        isLoading={submitting}
+        onClick={handlePayment}
+        size="large"
+        data-testid={dataTestId}
+      >
+        Pay with iyzico
+      </Button>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="iyzico-payment-error-message"
       />
     </>
   )
